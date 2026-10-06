@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DecodeLabs | Enterprise Password Generator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh; display: flex;
+    align-items: center; justify-content: center;
+    padding: 24px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    color: #e2e8f0;
+  }
+  .card {
+    width: 100%; max-width: 620px;
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 20px; padding: 32px 28px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.55);
+  }
+  .header { text-align: center; margin-bottom: 22px; }
+  .header .badge {
+    display: inline-block; font-size: 11px;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 999px;
+    background: rgba(99, 102, 241, 0.15); color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: 24px; font-weight: 700;
+    background: linear-gradient(90deg, #818cf8, #22d3ee);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .header p { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+
+  /* ---- Tabs ---- */
+  .tabs {
+    display: flex; gap: 6px; margin-bottom: 20px;
+    background: #0b1220; padding: 5px; border-radius: 12px;
+    border: 1px solid #1e293b;
+  }
+  .tab {
+    flex: 1; padding: 9px; border-radius: 8px; border: none;
+    background: transparent; color: #94a3b8; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all .2s;
+  }
+  .tab:hover { color: #cbd5e1; }
+  .tab.active {
+    background: linear-gradient(135deg, #6366f1, #22d3ee);
+    color: #fff;
+  }
+
+  /* ---- Output ---- */
+  .output-wrap {
+    position: relative; background: #0b1220;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px; padding: 18px 52px 18px 18px;
+    margin-bottom: 16px; min-height: 68px;
+    display: flex; align-items: center;
+  }
+  #passwordOutput {
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 17px; word-break: break-all;
+    color: #22d3ee; line-height: 1.4; user-select: all;
+  }
+  #passwordOutput.placeholder { color: #475569; font-style: italic; font-size: 14px; }
+  .copy-btn {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    color: #a5b4fc; width: 36px; height: 36px;
+    border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+  }
+  .copy-btn:hover { background: rgba(99, 102, 241, 0.35); color: #fff; }
+  .copy-btn.copied { background: #22c55e; border-color: #22c55e; color: #fff; }
+
+  /* ---- Strength ---- */
+  .strength-section { margin-bottom: 18px; }
+  .strength-top {
+    display: flex; justify-content: space-between;
+    font-size: 12px; margin-bottom: 6px; color: #94a3b8;
+  }
+  #strengthLabel { font-weight: 700; }
+  .strength-bar { height: 8px; background: #1e293b; border-radius: 999px; overflow: hidden; }
+  #strengthFill { height: 100%; width: 0%; background: #64748b;
+                  transition: width .5s ease, background .5s ease; }
+
+  /* ---- Controls ---- */
+  .control { margin-bottom: 16px; }
+  .control label {
+    display: flex; justify-content: space-between;
+    font-size: 13px; color: #cbd5e1; margin-bottom: 10px; font-weight: 500;
+  }
+  #lengthValue, #wordCountValue { color: #22d3ee; font-weight: 700; font-family: monospace; }
+
+  input[type="range"] {
+    width: 100%; height: 6px; -webkit-appearance: none;
+    background: linear-gradient(90deg, #6366f1, #22d3ee);
+    border-radius: 999px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px;
+    background: #fff; border-radius: 50%; cursor: pointer;
+    border: 3px solid #6366f1;
+    box-shadow: 0 0 12px rgba(99, 102, 241, .7);
+  }
+
+  /* ---- Toggles ---- */
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .toggle {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px; background: #0b1220;
+    border: 1px solid #334155; border-radius: 10px;
+    cursor: pointer; font-size: 12.5px; color: #cbd5e1;
+    transition: all .2s; user-select: none;
+    flex: 1 1 calc(50% - 4px);
+  }
+  .toggle:hover { border-color: #6366f1; }
+  .toggle input { accent-color: #6366f1; cursor: pointer; }
+
+  /* ---- Button ---- */
+  .generate-btn {
+    width: 100%; padding: 14px; border: none;
+    border-radius: 12px; font-size: 15px; font-weight: 700;
+    letter-spacing: .5px; color: #fff; cursor: pointer;
+    background: linear-gradient(135deg, #6366f1, #22d3ee);
+    transition: transform .15s, box-shadow .25s;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+    margin-bottom: 8px;
+  }
+  .generate-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(99, 102, 241, 0.5);
+  }
+  .generate-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+  /* ---- Action buttons ---- */
+  .action-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .action-btn {
+    flex: 1; padding: 9px; border-radius: 10px;
+    background: #0b1220; border: 1px solid #334155;
+    color: #cbd5e1; cursor: pointer; font-size: 12px;
+    font-weight: 600; transition: all .2s;
+  }
+  .action-btn:hover { border-color: #6366f1; color: #fff; }
+
+  /* ---- Stats ---- */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat {
+    background: #0b1220; border: 1px solid #1e293b;
+    border-radius: 10px; padding: 12px; text-align: center;
+  }
+  .stat .label {
+    font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 1px; color: #64748b; margin-bottom: 5px;
+  }
+  .stat .value {
+    font-size: 15px; font-weight: 700;
+    color: #22d3ee; font-family: monospace; word-break: break-word;
+  }
+
+  /* ---- Breach alert ---- */
+  .breach-alert {
+    display: none; margin-top: 12px; padding: 12px 14px;
+    border-radius: 10px; font-size: 13px;
+  }
+  .breach-alert.safe {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #86efac;
+  }
+  .breach-alert.danger {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+  }
+
+  /* ---- History ---- */
+  .history {
+    margin-top: 18px; padding-top: 16px;
+    border-top: 1px solid #1e293b;
+  }
+  .history-title {
+    font-size: 11px; color: #64748b;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .history-item {
+    display: flex; justify-content: space-between;
+    padding: 6px 10px; border-radius: 6px;
+    font-family: monospace; font-size: 11.5px;
+    color: #94a3b8; background: #0b1220;
+    margin-bottom: 4px; cursor: pointer;
+  }
+  .history-item:hover { background: #1e293b; color: #22d3ee; }
+
+  /* ---- Error ---- */
+  #errorMsg {
+    display: none; margin-top: 10px; padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 8px; color: #fca5a5; font-size: 13px;
+  }
+
+  /* ---- Hidden sections ---- */
+  .hidden { display: none !important; }
+
+  /* ---- Toast ---- */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%);
+    background: #22c55e; color: white;
+    padding: 12px 24px; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    z-index: 9999; animation: slideUp .3s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <div class="badge">DecodeLabs · Project 3</div>
+    <h1>Enterprise Password Generator</h1>
+    <p>NIST 2024 · secrets module · entropy validated</p>
+  </div>
+
+  <!-- Mode Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-mode="password">🔑 Password</button>
+    <button class="tab" data-mode="passphrase">📖 Passphrase</button>
+  </div>
+
+  <!-- Output -->
+  <div class="output-wrap">
+    <span id="passwordOutput" class="placeholder">Click "Generate Secure Password"…</span>
+    <button class="copy-btn" id="copyBtn" title="Copy">📋</button>
+  </div>
+
+  <!-- Strength Bar -->
+  <div class="strength-section">
+    <div class="strength-top">
+      <span>Password Strength</span>
+      <span id="strengthLabel">—</span>
+    </div>
+    <div class="strength-bar"><div id="strengthFill"></div></div>
+  </div>
+
+  <!-- ============ PASSWORD MODE ============ -->
+  <div id="passwordControls">
+    <div class="control">
+      <label><span>Password Length</span><span id="lengthValue">16</span></label>
+      <input type="range" id="lengthSlider" min="8" max="64" value="16" />
+    </div>
+
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="includeDigits" checked /> Include Digits (0-9)</label>
+      <label class="toggle"><input type="checkbox" id="includeSymbols" checked /> Include Symbols (!@#)</label>
+      <label class="toggle"><input type="checkbox" id="excludeAmbiguous" /> Exclude Ambiguous (O, 0, l, 1, I)</label>
+      <label class="toggle"><input type="checkbox" id="requireEachType" checked /> Require Each Type</label>
+      <label class="toggle"><input type="checkbox" id="checkBreach" /> Check Breach (HIBP)</label>
+      <label class="toggle"><input type="checkbox" id="autoSave" /> Auto-save to Vault</label>
+    </div>
+  </div>
+
+  <!-- ============ PASSPHRASE MODE ============ -->
+  <div id="passphraseControls" class="hidden">
+    <div class="control">
+      <label><span>Word Count</span><span id="wordCountValue">4</span></label>
+      <input type="range" id="wordCountSlider" min="3" max="8" value="4" />
+    </div>
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="capitalizeWords" checked /> Capitalize Words</label>
+      <label class="toggle"><input type="checkbox" id="addNumber" /> Add a Number</label>
+    </div>
+  </div>
+
+  <!-- Generate -->
+  <button class="generate-btn" id="generateBtn">🔐 Generate Secure Password</button>
+
+  <!-- Action row -->
+  <div class="action-row">
+    <button class="action-btn" id="saveVaultBtn">💾 Save to Vault</button>
+    <button class="action-btn" id="exportCsvBtn">📥 Export CSV</button>
+    <button class="action-btn" id="exportJsonBtn">📄 Export JSON</button>
+  </div>
+
+  <!-- Breach alert -->
+  <div id="breachAlert" class="breach-alert"></div>
+
+  <!-- Error -->
+  <div id="errorMsg"></div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="label">Entropy</div><div class="value" id="entropyVal">—</div></div>
+    <div class="stat"><div class="label">Crack Time</div><div class="value" id="crackVal">—</div></div>
+  </div>
+
+  <!-- History -->
+  <div class="history">
+    <div class="history-title">Recent Passwords (click to copy)</div>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<script>
+  // ---------- Elements ----------
+  const tabs             = document.querySelectorAll('.tab');
+  const passwordControls = document.getElementById('passwordControls');
+  const passphraseCtrl   = document.getElementById('passphraseControls');
+  const slider           = document.getElementById('lengthSlider');
+  const wordSlider       = document.getElementById('wordCountSlider');
+  const lengthValue      = document.getElementById('lengthValue');
+  const wordCountValue   = document.getElementById('wordCountValue');
+  const includeDigits    = document.getElementById('includeDigits');
+  const includeSymbols   = document.getElementById('includeSymbols');
+  const excludeAmbiguous = document.getElementById('excludeAmbiguous');
+  const requireEachType  = document.getElementById('requireEachType');
+  const checkBreach      = document.getElementById('checkBreach');
+  const autoSave         = document.getElementById('autoSave');
+  const capitalizeWords  = document.getElementById('capitalizeWords');
+  const addNumber        = document.getElementById('addNumber');
+  const generateBtn      = document.getElementById('generateBtn');
+  const outputEl         = document.getElementById('passwordOutput');
+  const copyBtn          = document.getElementById('copyBtn');
+  const saveVaultBtn     = document.getElementById('saveVaultBtn');
+  const exportCsvBtn     = document.getElementById('exportCsvBtn');
+  const exportJsonBtn    = document.getElementById('exportJsonBtn');
+  const strengthLabel    = document.getElementById('strengthLabel');
+  const strengthFill     = document.getElementById('strengthFill');
+  const entropyVal       = document.getElementById('entropyVal');
+  const crackVal         = document.getElementById('crackVal');
+  const breachAlert      = document.getElementById('breachAlert');
+  const errorMsg         = document.getElementById('errorMsg');
+  const historyList      = document.getElementById('historyList');
+
+  let currentMode = 'password';
+  let currentData = null;
+
+  // ---------- Tab switching ----------
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentMode = tab.dataset.mode;
+
+      if (currentMode === 'password') {
+        passwordControls.classList.remove('hidden');
+        passphraseCtrl.classList.add('hidden');
+        generateBtn.textContent = '🔐 Generate Secure Password';
+      } else {
+        passwordControls.classList.add('hidden');
+        passphraseCtrl.classList.remove('hidden');
+        generateBtn.textContent = '📖 Generate Passphrase';
+      }
+    });
+  });
+
+  // ---------- Sliders ----------
+  slider.addEventListener('input', () => lengthValue.textContent = slider.value);
+  wordSlider.addEventListener('input', () => wordCountValue.textContent = wordSlider.value);
+
+  // ---------- Keyboard shortcut ----------
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+      e.preventDefault();
+      generateBtn.click();
+    }
+  });
+
+  // ---------- Generate ----------
+  generateBtn.addEventListener('click', async () => {
+    errorMsg.style.display = 'none';
+    breachAlert.style.display = 'none';
+    generateBtn.disabled = true;
+    generateBtn.textContent = '⏳ Generating…';
+
+    const payload = currentMode === 'password'
+      ? {
+          mode: 'password',
+          length: parseInt(slider.value, 10),
+          include_digits: includeDigits.checked,
+          include_symbols: includeSymbols.checked,
+          exclude_ambiguous: excludeAmbiguous.checked,
+          require_each_type: requireEachType.checked,
+          check_breach: checkBreach.checked,
+        }
+      : {
+          mode: 'passphrase',
+          word_count: parseInt(wordSlider.value, 10),
+          capitalize: capitalizeWords.checked,
+          add_number: addNumber.checked,
+        };
+
+    try {
+      const res  = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (!data.success) { showError(data.error); return; }
+      currentData = data;
+      renderResult(data);
+
+      if (autoSave.checked && currentMode === 'password') {
+        await saveCurrentToVault(true);
+      }
+      refreshHistory();
+    } catch (err) {
+      showError('Cannot reach server. Is Flask running?');
+    } finally {
+      generateBtn.disabled = false;
+      generateBtn.textContent = currentMode === 'password'
+        ? '🔐 Generate Secure Password'
+        : '📖 Generate Passphrase';
+    }
+  });
+
+  // ---------- Render result ----------
+  function renderResult(data) {
+    outputEl.textContent = data.password;
+    outputEl.classList.remove('placeholder');
+
+    const pct = Math.min(100, (data.entropy_bits / 100) * 100);
+    strengthFill.style.width      = pct + '%';
+    strengthFill.style.background = data.strength_color;
+    strengthLabel.textContent     = data.strength;
+    strengthLabel.style.color     = data.strength_color;
+
+    entropyVal.textContent = data.entropy_bits + ' bits';
+    crackVal.textContent   = data.crack_time;
+
+    // Breach alert
+    if (data.breach_count !== undefined && data.breach_count !== null) {
+      breachAlert.style.display = 'block';
+      if (data.breach_count > 0) {
+        breachAlert.className = 'breach-alert danger';
+        breachAlert.textContent = `⚠ This password appeared in ${data.breach_count.toLocaleString()} known breaches. Regenerate!`;
+      } else {
+        breachAlert.className = 'breach-alert safe';
+        breachAlert.textContent = '✅ Not found in any known breaches.';
+      }
+    }
+  }
+
+  // ---------- Copy ----------
+  copyBtn.addEventListener('click', async () => {
+    const text = outputEl.textContent;
+    if (!text || outputEl.classList.contains('placeholder')) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      copyBtn.textContent = '✓';
+      copyBtn.classList.add('copied');
+      showToast('✓ Copied to clipboard');
+      setTimeout(() => {
+        copyBtn.textContent = '📋';
+        copyBtn.classList.remove('copied');
+      }, 1500);
+    } catch { showError('Clipboard denied.'); }
+  });
+
+  // ---------- Save to vault ----------
+  saveVaultBtn.addEventListener('click', () => saveCurrentToVault(false));
+
+  async function saveCurrentToVault(silent) {
+    if (!currentData) { showError('Generate a password first.'); return; }
+    const label = prompt('Label for this password:', 'My password') || 'Untitled';
+    try {
+      const res = await fetch('/api/vault', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label,
+          password: currentData.password,
+          entropy: currentData.entropy_bits,
+        })
+      });
+      const data = await res.json();
+      if (!data.success) { showError(data.error); return; }
+      if (!silent) showToast('💾 Saved to vault');
+    } catch { showError('Vault unavailable. Install cryptography.'); }
+  }
+
+  // ---------- Export ----------
+  exportCsvBtn.addEventListener('click',  () => window.open('/api/export/csv', '_blank'));
+  exportJsonBtn.addEventListener('click', () => window.open('/api/export/json', '_blank'));
+
+  // ---------- History ----------
+  async function refreshHistory() {
+    try {
+      const res  = await fetch('/api/history');
+      const data = await res.json();
+      historyList.innerHTML = '';
+      data.history.slice().reverse().forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `<span>${item.password.slice(0, 32)}${item.password.length > 32 ? '…' : ''}</span>
+                         <span>${item.entropy} bits</span>`;
+        div.onclick = () => {
+          navigator.clipboard.writeText(item.password);
+          showToast('✓ Copied from history');
+        };
+        historyList.appendChild(div);
+      });
+    } catch {}
+  }
+
+  // ---------- Helpers ----------
+  function showError(msg) {
+    errorMsg.textContent = '⚠ ' + msg;
+    errorMsg.style.display = 'block';
+  }
+
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2000);
+  }
+
+  // Auto-generate on load
+  window.addEventListener('DOMContentLoaded', () => {
+    generateBtn.click();
+    refreshHistory();
+  });
+</script>
+
+</body>
+</html>
