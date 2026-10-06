@@ -1,27 +1,3 @@
-"""
-================================================================
- DecodeLabs Project 3 : ENTERPRISE RANDOM PASSWORD GENERATOR
- Single-file backend with all advanced features:
-
-  ✅ Secure password generation (secrets module)
-  ✅ Passphrase mode (Diceware-style)
-  ✅ Exclude ambiguous characters (O, 0, l, 1, I)
-  ✅ Ambiguous char filtering
-  ✅ Password history (last 10)
-  ✅ Entropy + crack time estimation
-  ✅ Strength scoring breakdown
-  ✅ HaveIBeenPwned breach check (k-anonymity)
-  ✅ SQLite encrypted vault (Fernet)
-  ✅ Bulk generation (up to 100 at once)
-  ✅ CSV export
-  ✅ Basic rate limiting
-  ✅ Serves index.html from same folder
-================================================================
-"""
-
-# ------------------------------------------------------------------
-# Imports
-# ------------------------------------------------------------------
 from flask import Flask, request, jsonify, render_template, Response
 from collections import deque, defaultdict
 from time import time
@@ -36,7 +12,7 @@ import hashlib
 import urllib.request
 import urllib.error
 
-# Optional: cryptography (for vault)
+
 try:
     from cryptography.fernet import Fernet
     CRYPTO_AVAILABLE = True
@@ -45,18 +21,12 @@ except ImportError:
     print("⚠  'cryptography' not installed — vault features disabled.")
     print("   Install with: pip install cryptography")
 
-# ------------------------------------------------------------------
-# Flask App Setup (serves index.html from same folder)
-# ------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=BASE_DIR)
 
-# ------------------------------------------------------------------
-# Constants & Configuration
-# ------------------------------------------------------------------
+
 AMBIGUOUS_CHARS = set("O0oIl1|`'\",;:.")
 
-# Compact Diceware-style wordlist (extend as needed)
 WORDLIST = [
     "apple", "zebra", "piano", "tiger", "castle", "rocket", "sunset", "forest",
     "ocean", "mountain", "river", "silver", "golden", "thunder", "falcon", "phoenix",
@@ -70,14 +40,10 @@ WORDLIST = [
     "courage", "wisdom", "honor", "valor", "spirit", "dream", "vision", "purpose",
 ]
 
-# Runtime state
 password_history = deque(maxlen=10)       # last 10 generated passwords
 request_log      = defaultdict(list)      # IP → list of timestamps
 RATE_LIMIT       = 60                     # max requests per IP per minute
 
-# ------------------------------------------------------------------
-# Vault Setup (SQLite + Fernet encryption)
-# ------------------------------------------------------------------
 VAULT_DB    = os.path.join(BASE_DIR, "vault.db")
 VAULT_KEY_F = os.path.join(BASE_DIR, "vault.key")
 fernet      = None
@@ -156,10 +122,6 @@ def delete_from_vault(entry_id):
     conn.commit()
     conn.close()
 
-
-# ------------------------------------------------------------------
-# Rate Limiting
-# ------------------------------------------------------------------
 def is_rate_limited(ip):
     """Allow RATE_LIMIT requests per IP per minute."""
     now = time()
@@ -169,10 +131,6 @@ def is_rate_limited(ip):
     request_log[ip].append(now)
     return False
 
-
-# ------------------------------------------------------------------
-# Character Pool Builder
-# ------------------------------------------------------------------
 def build_character_pool(include_digits=True,
                          include_symbols=True,
                          exclude_ambiguous=False):
@@ -186,10 +144,6 @@ def build_character_pool(include_digits=True,
         pool = "".join(c for c in pool if c not in AMBIGUOUS_CHARS)
     return pool
 
-
-# ------------------------------------------------------------------
-# Password & Passphrase Generation
-# ------------------------------------------------------------------
 def generate_password(length,
                       include_digits=True,
                       include_symbols=True,
@@ -238,10 +192,6 @@ def generate_passphrase(word_count=4, separator="-", capitalize=True, add_number
         phrase += str(secrets.randbelow(100))
     return phrase
 
-
-# ------------------------------------------------------------------
-# Entropy & Strength Scoring
-# ------------------------------------------------------------------
 def calculate_entropy(length, pool_size):
     """E = L × log₂(R)"""
     if pool_size <= 1 or length <= 0:
@@ -294,10 +244,6 @@ def humanize_time(seconds):
                 return f"{value:,.0f} {name}{'s' if value >= 2 else ''}"
     return "Instantly"
 
-
-# ------------------------------------------------------------------
-# HaveIBeenPwned Breach Check (k-anonymity)
-# ------------------------------------------------------------------
 def is_compromised(password, timeout=4):
     """
     Check password against HIBP's pwned-passwords database.
@@ -321,18 +267,10 @@ def is_compromised(password, timeout=4):
     except Exception as e:
         return 0, f"Check failed: {e}"
 
-
-# ------------------------------------------------------------------
-# Routes — HTML
-# ------------------------------------------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
-# ------------------------------------------------------------------
-# Routes — API
-# ------------------------------------------------------------------
 @app.route("/api/generate", methods=["POST"])
 def api_generate():
     """Generate one password (or passphrase)."""
@@ -346,7 +284,7 @@ def api_generate():
 
         mode = data.get("mode", "password").lower()
 
-        # ---------- Passphrase mode ----------
+       
         if mode == "passphrase":
             word_count = max(3, min(int(data.get("word_count", 4)), 8))
             separator  = str(data.get("separator", "-"))[:3] or "-"
@@ -374,7 +312,7 @@ def api_generate():
                 "breakdown": score_breakdown(len(passphrase), entropy, False, False),
             })
 
-        # ---------- Password mode ----------
+        
         try:
             length = int(data.get("length", 16))
         except (ValueError, TypeError):
@@ -394,29 +332,29 @@ def api_generate():
         require_each_type = bool(data.get("require_each_type", True))
         check_breach      = bool(data.get("check_breach", False))
 
-        # Generate
+        
         password = generate_password(
             length, include_digits, include_symbols,
             exclude_ambiguous, require_each_type
         )
 
-        # Entropy / strength
+        
         pool_size = len(build_character_pool(
             include_digits, include_symbols, exclude_ambiguous))
         entropy = round(calculate_entropy(length, pool_size), 2)
         label, color = classify_strength(entropy)
 
-        # Crack time
+        
         guesses = pool_size ** length
         crack_time = humanize_time(guesses / 1e10)
 
-        # Optional: breach check
+        
         breach_count = None
         breach_error = None
         if check_breach:
             breach_count, breach_error = is_compromised(password)
 
-        # Store in history
+        
         password_history.append({
             "password": password,
             "entropy": entropy,
@@ -489,8 +427,6 @@ def api_check_breach():
         "error":        err,
     })
 
-
-# ---------- Vault endpoints ----------
 @app.route("/api/vault", methods=["GET"])
 def api_vault_list():
     try:
@@ -522,8 +458,6 @@ def api_vault_delete(entry_id):
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-# ---------- Export endpoints ----------
 @app.route("/api/export/csv", methods=["GET"])
 def export_csv():
     output = io.StringIO()
@@ -543,9 +477,6 @@ def export_json():
     return jsonify({"success": True, "history": list(password_history)})
 
 
-# ------------------------------------------------------------------
-# Bootstrap
-# ------------------------------------------------------------------
 init_vault()
 
 if __name__ == "__main__":
